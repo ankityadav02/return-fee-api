@@ -1,0 +1,201 @@
+<div class="return-page">
+  <div class="return-header">
+    <a href="/account/orders" class="back-link">← Request return</a>
+  </div>
+
+  <div class="return-layout">
+    <div class="return-card">
+      <div class="product-row">
+        <div class="thumb">
+          <span style="font-size:28px;">👕</span>
+          <span class="badge">1</span>
+        </div>
+        <div class="product-info">
+          <span class="product-name">T-shirt</span>
+          <span class="product-price">₹500.00</span>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Reason</label>
+        <select id="reason-select" onchange="checkForm()">
+          <option value="">Select a reason</option>
+          <option value="wrong_size">Wrong size delivered</option>
+          <option value="defective">Defective / damaged product</option>
+          <option value="not_as_described">Not as described</option>
+          <option value="changed_mind">Changed my mind</option>
+          <option value="wrong_item">Wrong item sent</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label>Note (optional)</label>
+        <textarea id="note" placeholder="Add any details about your return..."></textarea>
+      </div>
+    </div>
+
+    <div class="return-side">
+      <div class="summary-card">
+        <div class="summary-row">
+          <strong>Returning</strong>
+          <span>1 item</span>
+        </div>
+        <hr>
+        <div class="fee-box">
+          <div class="fee-row">
+            <span>Return processing fee</span>
+            <span class="fee-amount">₹100.00</span>
+          </div>
+          <small>Charged via Razorpay. Refundable if claim approved.</small>
+        </div>
+        <div class="info-box">
+          ⓘ Return and refund eligibility will be based on our refund policy.
+        </div>
+        <button class="btn-pay" id="pay-btn" disabled onclick="handlePayment()">
+          💳 Pay ₹100 & Request Return
+        </button>
+        <div id="status-msg" style="display:none; margin-top:12px; padding:10px; border-radius:8px; font-size:13px; text-align:center;"></div>
+        <div class="rp-badge">🔒 Secured by Razorpay</div>
+      </div>
+      <a href="/account/orders" class="btn-cancel">Cancel</a>
+    </div>
+  </div>
+</div>
+
+<style>
+.return-page { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+.back-link { font-size: 15px; font-weight: 600; text-decoration: none; color: inherit; display: block; margin-bottom: 20px; }
+.return-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+@media (max-width: 700px) { .return-layout { grid-template-columns: 1fr; } }
+.return-card, .summary-card { background: #1c1c1e; border-radius: 12px; padding: 20px; color: #fff; }
+.product-row { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+.thumb { position: relative; width: 64px; height: 64px; border-radius: 8px; background: #2c2c2e; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.badge { position: absolute; top: -4px; right: -4px; background: #333; color: #fff; font-size: 10px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.product-info { flex: 1; display: flex; justify-content: space-between; align-items: center; }
+.product-name { font-size: 15px; font-weight: 500; }
+.product-price { font-size: 15px; font-weight: 600; }
+.field-group { margin-bottom: 14px; }
+.field-group label { display: block; font-size: 12px; color: #aaa; margin-bottom: 6px; }
+select, textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #3a3a3c; background: #2c2c2e; color: #fff; font-size: 14px; }
+textarea { min-height: 80px; resize: vertical; }
+.summary-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 12px; color: #fff; }
+hr { border: none; border-top: 1px solid #3a3a3c; margin: 12px 0; }
+.fee-box { background: #2c2c2e; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+.fee-row { display: flex; justify-content: space-between; font-size: 14px; color: #fff; margin-bottom: 4px; }
+.fee-amount { font-weight: 600; }
+.fee-box small { font-size: 11px; color: #888; }
+.info-box { font-size: 13px; color: #aaa; margin-bottom: 16px; }
+.btn-pay { width: 100%; padding: 13px; border-radius: 10px; border: 1px solid #555; background: transparent; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-pay:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-pay:not(:disabled):hover { background: #2c2c2e; }
+.rp-badge { text-align: center; font-size: 12px; color: #888; margin-top: 10px; }
+.btn-cancel { display: block; width: 100%; margin-top: 12px; padding: 13px; border-radius: 10px; border: 1px solid #3a3a3c; background: #1c1c1e; color: #fff; font-size: 14px; font-weight: 600; text-align: center; text-decoration: none; box-sizing: border-box; }
+</style>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  // Order ID URL se nikalo
+  var urlParams = new URLSearchParams(window.location.search);
+  var shopifyOrderId = urlParams.get('orderId') || '';
+
+  // APNA VERCEL URL YAHAN DAALO after deploy
+  var BACKEND_URL = 'https://YOUR-VERCEL-APP.vercel.app';
+
+  function checkForm() {
+    document.getElementById('pay-btn').disabled = !document.getElementById('reason-select').value;
+  }
+
+  function showStatus(msg, success) {
+    var el = document.getElementById('status-msg');
+    el.style.display = 'block';
+    el.style.background = success ? '#16a34a22' : '#dc262622';
+    el.style.color = success ? '#16a34a' : '#dc2626';
+    el.style.border = '1px solid ' + (success ? '#16a34a' : '#dc2626');
+    el.innerText = msg;
+  }
+
+  async function handlePayment() {
+    var reason = document.getElementById('reason-select').value;
+    var note = document.getElementById('note').value;
+
+    if (!reason) return;
+
+    document.getElementById('pay-btn').disabled = true;
+    document.getElementById('pay-btn').innerText = 'Processing...';
+
+    try {
+      // Step 1: Backend se Razorpay order banao
+      var orderRes = await fetch(BACKEND_URL + '/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shopify_order_id: shopifyOrderId })
+      });
+      var orderData = await orderRes.json();
+
+      if (!orderData.orderId) throw new Error('Order creation failed');
+
+      // Step 2: Razorpay checkout kholo
+      var options = {
+        key: 'rzp_test_SlJb9MMQwThh73',
+        amount: 10000,
+        currency: 'INR',
+        name: 'Online Store',
+        description: 'Return Processing Fee',
+        order_id: orderData.orderId,
+        theme: { color: '#1a1a1a' },
+        handler: async function(response) {
+          showStatus('Payment successful! Submitting return request...', true);
+
+          // Step 3: Backend ko payment verify karke return submit karo
+          try {
+            var submitRes = await fetch(BACKEND_URL + '/api/submit-return', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                shopify_order_id: shopifyOrderId,
+                return_reason: reason,
+                return_note: note
+              })
+            });
+
+            var submitData = await submitRes.json();
+
+            if (submitData.success) {
+              showStatus('✅ Return request submitted successfully! Check your email for confirmation.', true);
+              document.getElementById('pay-btn').innerText = '✅ Return Submitted';
+            } else {
+              showStatus('Payment done but return submission failed: ' + submitData.error, false);
+              document.getElementById('pay-btn').disabled = false;
+              document.getElementById('pay-btn').innerText = '💳 Pay ₹100 & Request Return';
+            }
+          } catch(e) {
+            showStatus('Return submission error: ' + e.message, false);
+          }
+        },
+        modal: {
+          ondismiss: function() {
+            document.getElementById('pay-btn').disabled = false;
+            document.getElementById('pay-btn').innerText = '💳 Pay ₹100 & Request Return';
+          }
+        }
+      };
+
+      new Razorpay(options).open();
+
+    } catch(err) {
+      showStatus('Error: ' + err.message, false);
+      document.getElementById('pay-btn').disabled = false;
+      document.getElementById('pay-btn').innerText = '💳 Pay ₹100 & Request Return';
+    }
+  }
+</script>
+
+{% schema %}
+{
+  "name": "Return Request Form",
+  "settings": []
+}
+{% endschema %}

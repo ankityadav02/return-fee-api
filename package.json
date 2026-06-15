@@ -1,0 +1,12 @@
+{
+  "name": "return-fee-api",
+  "version": "1.0.0",
+  "description": "Shopify return fee API with Razorpay",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "razorpay": "^2.9.2"
+  }
+}
