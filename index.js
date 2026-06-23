@@ -5,13 +5,42 @@ import Razorpay from 'razorpay';
 const app = express();
 app.use(express.json());
 
-// CORS
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
   next();
+});
+
+// Get order details
+app.get('/api/order/:orderId', async (req, res) => {
+  try {
+    const orderRes = await fetch(
+      `https://${process.env.SHOPIFY_STORE}/admin/api/2024-01/orders/${req.params.orderId}.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    const data = await orderRes.json();
+    if (!data.order) return res.status(404).json({ error: 'Order not found' });
+    
+    const order = data.order;
+    const lineItem = order.line_items[0];
+    
+    return res.status(200).json({
+      orderNumber: order.order_number,
+      productName: lineItem?.title || 'Product',
+      productPrice: lineItem?.price || '0.00',
+      productImage: lineItem?.properties?.find(p => p.name === 'image')?.value || null,
+      currency: order.currency
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 // Create Razorpay Order
@@ -45,7 +74,6 @@ app.post('/api/submit-return', async (req, res) => {
     return_note
   } = req.body;
 
-  // Verify Razorpay signature
   try {
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSignature = crypto
@@ -60,7 +88,6 @@ app.post('/api/submit-return', async (req, res) => {
     return res.status(400).json({ error: 'Signature error' });
   }
 
-  // Get Shopify order
   try {
     const orderRes = await fetch(
       `https://${process.env.SHOPIFY_STORE}/admin/api/2024-01/orders/${shopify_order_id}.json`,
@@ -76,9 +103,6 @@ app.post('/api/submit-return', async (req, res) => {
     const order = orderData.order;
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    // Submit return via GraphQL
-    const fulfillmentId = order.fulfillments?.[0]?.line_items?.[0]?.id;
-    
     const graphqlRes = await fetch(
       `https://${process.env.SHOPIFY_STORE}/admin/api/2024-01/graphql.json`,
       {
